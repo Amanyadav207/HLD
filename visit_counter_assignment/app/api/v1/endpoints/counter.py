@@ -5,15 +5,17 @@ from ....schemas.counter import VisitCount
 
 router = APIRouter()
 
+visit_counter_service = VisitCounterService()
 # Dependency to get VisitCounterService instance
 def get_visit_counter_service():
-    return VisitCounterService()
+    return visit_counter_service
 
 @router.post("/visit/{page_id}")
 async def record_visit(
     page_id: str,
     counter_service: VisitCounterService = Depends(get_visit_counter_service)
 ):
+  
     """Record a visit for a website"""
     try:
         await counter_service.increment_visit(page_id)
