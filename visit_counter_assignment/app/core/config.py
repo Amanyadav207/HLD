@@ -4,8 +4,8 @@ import os
 
 class Settings(BaseSettings):
     # Redis Configuration
+    REDIS_URL: str = "redis://localhost:6379"
     REDIS_NODES: str = ""  # Will be a comma-separated string of Redis nodes
-    
     REDIS_PASSWORD: str = ""
     REDIS_DB: int = 0
     

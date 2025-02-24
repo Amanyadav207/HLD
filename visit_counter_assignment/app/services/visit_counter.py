@@ -1,35 +1,31 @@
-from typing import Dict, List, Any
-import asyncio
-from datetime import datetime
+from typing import Any
 from ..core.redis_manager import RedisManager
-from ..schemas.counter import VisitCount
 
 class VisitCounterService:
     def __init__(self):
         """Initialize the visit counter service with Redis manager"""
-        # self.redis_manager = RedisManager()
-        self.map: Dict[str, int] = {}
+        self.redis_manager = RedisManager()  # Use Redis instead of in-memory storage
 
-    async def increment_visit(self, page_id: str) -> None:
+    async def increment_visit(self, page_id: str) -> int:
         """
-        Increment visit count for a page
+        Increment visit count for a page and store in Redis
         
         Args:
             page_id: Unique identifier for the page
+            
+        Returns:
+            New visit count
         """
-        # TODO: Implement visit count increment
-
-        if page_id in self.map:
-            print("present")
-            self.map[page_id] += 1
-        else:
-            print("absent")
-            self.map[page_id] = 1
-        print("counter", self.map[page_id])
+        try:
+            new_count = await self.redis_manager.increment(page_id)
+            return new_count
+        except Exception as e:
+            print(f"Error incrementing visit count: {e}")
+            return 0  # Return 0 in case of failure
 
     async def get_visit_count(self, page_id: str) -> int:
         """
-        Get current visit count for a page
+        Get current visit count for a page from Redis
         
         Args:
             page_id: Unique identifier for the page
@@ -37,6 +33,9 @@ class VisitCounterService:
         Returns:
             Current visit count
         """
-        # TODO: Implement getting visit count
-        print("hi")
-        return self.map.get(page_id,0)
+        try:
+            count = await self.redis_manager.get(page_id)
+            return count if count is not None else 0  # Return 0 if key doesn't exist
+        except Exception as e:
+            print(f"Error retrieving visit count: {e}")
+            return 0
