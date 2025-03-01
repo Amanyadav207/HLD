@@ -1,16 +1,29 @@
 import asyncio
 import time
+import hashlib
 from ..core.redis_manager import RedisManager
 
 class VisitCounterService:
     def __init__(self):
         """Initialize the visit counter service with Redis manager and in-memory cache"""
-        self.redis_manager = RedisManager()
+        # Initialize Redis managers for each shard
+        self.redis_shards = {
+            'redis_7070': RedisManager(port=7070),
+            'redis_7071': RedisManager(port=7071)
+        }
         self.cache = {} 
         self.ttl = 5 
         self.buffer = {}  # In-memory buffer for batching
         self.flush_interval = 30  # Flush interval in seconds
         asyncio.create_task(self._flush_buffer_periodically())
+
+    def _get_shard(self, page_id: str):
+        """
+        Determine which Redis shard to use based on consistent hashing.
+        """
+        hash_value = int(hashlib.md5(page_id.encode()).hexdigest(), 16)
+        shard_key = 'redis_7070' if hash_value % 2 == 0 else 'redis_7071'
+        return self.redis_shards[shard_key], shard_key
 
     async def increment_visit(self, page_id: str) -> int:
         """
@@ -33,9 +46,10 @@ class VisitCounterService:
         """
         for page_id, count in self.buffer.items():
             try:
-                await self.redis_manager.increment(page_id, count)
+                shard, shard_key = self._get_shard(page_id)
+                await shard.increment(page_id, count)
             except Exception as e:
-                print(f"Error flushing buffer for {page_id}: {e}")
+                print(f"Error flushing buffer for {page_id} to {shard_key}: {e}")
         self.buffer.clear()
 
     async def get_visit_count(self, page_id: str) -> dict:
@@ -51,11 +65,12 @@ class VisitCounterService:
 
         # If not in cache or expired, query Redis
         try:
-            count = await self.redis_manager.get(page_id)
+            shard, shard_key = self._get_shard(page_id)
+            count = await shard.get(page_id)
             count = count if count is not None else 0
             total_count = count + self.buffer.get(page_id, 0)
             self.cache[page_id] = (total_count, time.time())  # Update cache
-            return {"visits": total_count, "served_via": "redis"}
+            return {"visits": total_count, "served_via": shard_key}
         except Exception as e:
-            print(f"Error retrieving visit count: {e}")
+            print(f"Error retrieving visit count for {page_id}: {e}")
             return {"visits": 0, "served_via": "error"}
