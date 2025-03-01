@@ -16,7 +16,7 @@ services:
   redis1:
     image: redis:7
     ports:
-      - "6379:6379"
+      - "7070:6379"
     volumes:
       - redis1_data:/data
     command: redis-server --appendonly yes
@@ -24,7 +24,7 @@ services:
   redis2:
     image: redis:7
     ports:
-      - "6380:6379"
+      - "7071:6379"
     volumes:
       - redis2_data:/data
     command: redis-server --appendonly yes

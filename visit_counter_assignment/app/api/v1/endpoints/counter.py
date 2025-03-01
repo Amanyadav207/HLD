@@ -6,19 +6,19 @@ router = APIRouter()
 counter_service = VisitCounterService()
 
 @router.post("/visit/{page_id}")
-async def record_visit(page_id: str):
+async def increment_visit(page_id: str):
     """Record a visit for a website"""
     try:
-        await counter_service.increment_visit(page_id)
-        return {"status": "success", "message": f"Visit recorded for page {page_id}"}
+        count = counter_service.increment_visit(page_id)
+        return {"visits": count, "served_via": "in_memory"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/visits/{page_id}")
-async def get_visits(page_id: str):
+async def get_visit_count(page_id: str):
     """Get visit count for a website"""
     try:
-        result = await counter_service.get_visit_count(page_id)
+        result = counter_service.get_visit_count(page_id)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
